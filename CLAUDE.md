@@ -24,6 +24,28 @@ via `scripts/_build_common.sh`. Override per-invocation with
 don't invalidate the whole cache (mtime would). Relevant for visionOS beta
 churn.
 
+## Phase 3 (gRPC) — known ABI gaps vs Google's iOS slice
+
+Our `grpc.framework` is ~17 MB vs Google's ~33 MB. Symbol diff at the
+visionOS device slice:
+
+- 11 missing public `_grpc_*` symbols: `grpc_absl_log*` (3, abseil log
+  wrapper), `grpc_gcp_*` (6, ALTS handshake), `grpc_lb_v1_*` (2, deprecated
+  LB v1). ALTS and LB v1 are not used by Firestore clients; `grpc_absl_log*`
+  could be referenced broadly — flag if Phase 4 link fails on it.
+- ~5000 missing absl `T` symbols: ~3500 are `container_internal` template
+  instantiations parameterised on `grpc_core::*` types (gRPC's own internal
+  use; Firestore instantiates its own with `FirestoreFoo` types instead).
+  Not a Firestore link risk.
+
+Likely cause of the size gap: `-fno-rtti -fno-exceptions -fvisibility=hidden`
+in our CXX flags vs Google's CocoaPods build which doesn't set these. Means
+some out-of-line template code is inlined-away in our build. Cosmetic for
+Firestore's link path.
+
+If Phase 4 link fails on a specific `_grpc_*` or absl symbol, dig in then —
+don't pre-emptively beef up the build.
+
 ## Adding a new build-*.sh
 
 After `set -euo pipefail`, source `_build_common.sh`:
