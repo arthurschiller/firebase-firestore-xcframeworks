@@ -20,6 +20,17 @@ SLICES="$REPO_ROOT/build/artifacts/absl-slices"
 if [ ! -d "$SRC" ]; then echo "ERROR: abseil source not at $SRC"; exit 1; fi
 if [ ! -d "$GOOGLE_ABSL" ]; then echo "ERROR: Google absl.xcframework not at $GOOGLE_ABSL"; exit 1; fi
 
+# Force absl's stdlib-interop options to "distinct class" mode (=0) instead
+# of auto-detect (=2). Auto-detect picks std:: aliases when compiled with
+# C++17, which produces different mangled symbol names than gRPC's bundled
+# absl build (which compiles with a different effective C++ standard via
+# CMake submodule defaults). The ABI mismatch breaks linking: grpc.framework
+# references e.g. absl::Base64Escape(absl::string_view) but our absl.framework
+# would define absl::Base64Escape(std::string_view). Forcing all options to 0
+# makes the ABI deterministic and matches Google's own iOS/macOS/tvOS slices.
+sed -i.bak 's/^#define ABSL_OPTION_USE_STD_\([A-Z_]*\) 2$/#define ABSL_OPTION_USE_STD_\1 0/' \
+  "$SRC/absl/base/options.h"
+
 rm -rf "$OUT" "$SLICES"
 mkdir -p "$OUT" "$SLICES"
 
@@ -79,6 +90,14 @@ build_slice() {
   # Copy headers and module map from Google's iOS slice (same source → identical headers)
   cp -R "$REF_SLICE/Headers/." "$framework_dir/Headers/"
   cp -R "$REF_SLICE/Modules/." "$framework_dir/Modules/"
+
+  # Apply the same options.h patch to the shipped headers so any consumer code
+  # that compiles against absl headers picks up the same ABI as our binary.
+  if [ -f "$framework_dir/Headers/base/options.h" ]; then
+    sed -i.bak 's/^#define ABSL_OPTION_USE_STD_\([A-Z_]*\) 2$/#define ABSL_OPTION_USE_STD_\1 0/' \
+      "$framework_dir/Headers/base/options.h"
+    rm -f "$framework_dir/Headers/base/options.h.bak"
+  fi
 
   # Generate Info.plist with correct platform metadata
   cat > "$framework_dir/Info.plist" <<PLIST

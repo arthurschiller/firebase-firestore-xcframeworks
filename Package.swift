@@ -40,6 +40,13 @@
 // absl symbols come exclusively from firestore_absl. Google's iOS slices
 // are untouched. If grpc is ever rebuilt from scratch, ensure the
 // libabsl_*.a bundling line stays removed.
+//
+// HACK — absl.xcframework's visionOS slices are built with
+// ABSL_OPTION_USE_STD_* forced to 0 (see scripts/build-absl.sh). Default
+// auto-detect (=2) chooses std:: aliases when compiled with C++17, but
+// gRPC's bundled absl auto-detects differently and uses distinct classes,
+// producing mismatched mangled names at link time. Forcing 0 makes ABI
+// deterministic and matches Google's iOS/macOS/tvOS slices.
 
 import PackageDescription
 
@@ -72,8 +79,13 @@ let package = Package(
         // MARK: - Local binaryTargets
 
         .binaryTarget(name: "firestore_absl",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/absl.xcframework.zip",
-                      checksum: "959a61d05f95f831193454282a90c32cb167aaeb22abfd2b636c915c0b9e8bf3"),
+                      // Re-released under 11.15.5 after rebuilding visionOS slices
+                      // with ABSL_OPTION_USE_STD_* forced to 0 (distinct-class ABI).
+                      // The previous build's auto-detect produced std::string_view
+                      // aliasing, mangling differently than gRPC's bundled absl —
+                      // breaking visionOS link with undefined symbol errors.
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.5/absl.xcframework.zip",
+                      checksum: "8ba5ac93460c99955306c11cd036aafd1db9e05b5013f0b29731aa64a902f435"),
         .binaryTarget(name: "firestore_openssl_grpc",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/openssl_grpc.xcframework.zip",
                       checksum: "b0a0b744a3699bf741b7ada2a2892e1d8f3d0d4b40bf509685ee0916060236b2"),
