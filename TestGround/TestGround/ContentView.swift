@@ -7,10 +7,10 @@
 
 import SwiftUI
 import FirebaseCore
-import _FirebaseFirestore  // Real module name; consumers normally see this as
-                           // `FirebaseFirestore` via moduleAliases in their
-                           // Package.swift. This is a smoke-test app so no
-                           // moduleAlias — just import the underscored name.
+import FirebaseFirestorePrebuilt  // Renamed from upstream's `FirebaseFirestore`
+                                  // to avoid SPM target/PIF collisions with
+                                  // firebase-ios-sdk's own `FirebaseFirestore`
+                                  // target in the same dep graph.
 
 struct ContentView: View {
     @State private var instantiationStatus: String = "tap to instantiate"

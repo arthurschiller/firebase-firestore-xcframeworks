@@ -14,9 +14,11 @@
 //   - `_FirebaseFirestoreInternalWrapper` source target (Obj-C shim around
 //     the binary's headers). Renamed in SPM space; reachable from Firestore
 //     Swift code via a moduleAlias.
-//   - `_FirebaseFirestore` source target (Swift wrapper). Underscored. Its
-//     product is exported as `FirebaseFirestore`; consumers add a
-//     moduleAlias to see it under the unprefixed name.
+//   - `FirebaseFirestorePrebuilt` source target (Swift wrapper). Renamed
+//     from upstream's `FirebaseFirestore` to avoid SPM target-name collision
+//     with firebase-ios-sdk's own target of the same name, which is in the
+//     same dep graph (pulled by FirebaseCore/Auth/RemoteConfig). Consumer
+//     code imports `FirebaseFirestorePrebuilt` instead of `FirebaseFirestore`.
 //   - Firebase Core / SharedSwift / CoreExtension / AppCheckInterop /
 //     AuthInterop come from upstream firebase-ios-sdk, pulled either by
 //     direct product references (FirebaseCore) or transitively via heavier
@@ -44,17 +46,14 @@ let package = Package(
         .visionOS(.v1),
     ],
     products: [
-        // Product name is `Firestore` (not `FirebaseFirestore`) to avoid a
-        // PIF-level product-name collision with firebase-ios-sdk, which also
-        // ships a product named `FirebaseFirestore`. Consumers depend on
-        // this product with a moduleAlias mapping our `_FirebaseFirestore`
-        // target's module to `FirebaseFirestore`, so consumer code keeps
-        // using the standard `import FirebaseFirestore`:
-        //
-        //   .product(name: "Firestore",
-        //            package: "firebase-firestore-xcframeworks",
-        //            moduleAliases: ["_FirebaseFirestore": "FirebaseFirestore"])
-        .library(name: "Firestore", targets: ["_FirebaseFirestore"]),
+        // Product and target are both named `FirebaseFirestorePrebuilt` —
+        // a deliberate rename from upstream's `FirebaseFirestore` to avoid
+        // SPM target-name and PIF product-name collisions with
+        // firebase-ios-sdk (which ships its own `FirebaseFirestore` in the
+        // same dep graph). Consumers `import FirebaseFirestorePrebuilt`
+        // wherever upstream docs say `import FirebaseFirestore`. API
+        // surface is otherwise identical to upstream Firestore.
+        .library(name: "FirebaseFirestorePrebuilt", targets: ["FirebaseFirestorePrebuilt"]),
     ],
     dependencies: [
         .package(url: "https://github.com/firebase/firebase-ios-sdk.git", exact: "11.15.0"),
@@ -109,7 +108,7 @@ let package = Package(
         // MARK: - Firestore Swift wrapper
 
         .target(
-            name: "_FirebaseFirestore",
+            name: "FirebaseFirestorePrebuilt",
             dependencies: [
                 "_FirebaseFirestoreInternalWrapper",
                 "firestore_absl",
