@@ -15,7 +15,7 @@
  */
 
 #if SWIFT_PACKAGE
-  @_exported import FirebaseFirestoreInternalWrapper
+  @_exported import _FirebaseFirestoreInternalWrapper
 #else
   @_exported import FirebaseFirestoreInternal
 #endif // SWIFT_PACKAGE
@@ -58,4 +58,4 @@ extension CodableVectorValue {
 }
 
 /** Extends VectorValue to conform to Codable. */
-extension FirebaseFirestore.VectorValue: FirebaseFirestore.CodableVectorValue {}
+extension _FirebaseFirestore.VectorValue: _FirebaseFirestore.CodableVectorValue {}

@@ -15,7 +15,7 @@
  */
 
 #if SWIFT_PACKAGE
-  @_exported import FirebaseFirestoreInternalWrapper
+  @_exported import _FirebaseFirestoreInternalWrapper
 #else
   @_exported import FirebaseFirestoreInternal
 #endif // SWIFT_PACKAGE
@@ -50,4 +50,4 @@ extension CodableDocumentReference {
   }
 }
 
-extension FirebaseFirestore.DocumentReference: FirebaseFirestore.CodableDocumentReference {}
+extension _FirebaseFirestore.DocumentReference: _FirebaseFirestore.CodableDocumentReference {}

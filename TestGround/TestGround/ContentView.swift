@@ -7,7 +7,10 @@
 
 import SwiftUI
 import FirebaseCore
-import FirebaseFirestore
+import _FirebaseFirestore  // Real module name; consumers normally see this as
+                           // `FirebaseFirestore` via moduleAliases in their
+                           // Package.swift. This is a smoke-test app so no
+                           // moduleAlias — just import the underscored name.
 
 struct ContentView: View {
     @State private var instantiationStatus: String = "tap to instantiate"

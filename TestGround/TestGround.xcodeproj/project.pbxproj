@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1010000000000000000FF01 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = A1010000000000000000FF02 /* FirebaseFirestore */; };
+		A1010000000000000000FF01 /* Firestore in Frameworks */ = {isa = PBXBuildFile; productRef = A1010000000000000000FF02 /* Firestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1010000000000000000FF01 /* FirebaseFirestore in Frameworks */,
+				A1010000000000000000FF01 /* Firestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +70,7 @@
 			);
 			name = TestGround;
 			packageProductDependencies = (
-				A1010000000000000000FF02 /* FirebaseFirestore */,
+				A1010000000000000000FF02 /* Firestore */,
 			);
 			productName = TestGround;
 			productReference = D735F5202FB6087E00DD20E7 /* TestGround.app */;
@@ -362,9 +362,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A1010000000000000000FF02 /* FirebaseFirestore */ = {
+		A1010000000000000000FF02 /* Firestore */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = FirebaseFirestore;
+			productName = Firestore;
 		};
 /* End XCSwiftPackageProductDependency section */
 

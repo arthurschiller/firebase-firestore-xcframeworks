@@ -1,20 +1,34 @@
 // swift-tools-version:5.9
-// SPM overlay for firebase-ios-sdk 11.15.0, replacing FirebaseFirestore on
-// every platform — including visionOS — with locally-built binaryTargets.
-// No source compile on consumer's machine. Same instant link as iOS today.
+// firebase-firestore-xcframeworks — overlay on firebase-ios-sdk 11.15.x that
+// swaps FirebaseFirestore for a binary path with visionOS slices.
 //
-// 6 binaryTargets for the native deps (absl, openssl_grpc, grpc, grpcpp,
-// leveldb, nanopb) + FirebaseFirestoreInternal which combines Google's
-// untouched iOS/macOS/Catalyst/tvOS slices with our two visionOS slices
-// (xros-arm64, xros-arm64-simulator) built from Firestore's C++ source.
+// Architecture:
+//   - Five `firestore_*` binaryTargets for Firestore's native C/C++ deps.
+//     Names prefixed to avoid collisions with upstream firebase-ios-sdk's
+//     external package deps (abseil-cpp-binary, grpc-binary, firebase/leveldb).
+//   - `_FirebaseFirestoreInternal` binaryTarget — Google's six untouched
+//     iOS/macOS/Catalyst/tvOS slices merged with our two visionOS slices.
+//     The framework's modulemap module identifier is still
+//     `FirebaseFirestoreInternal` (intrinsic to the binary). SPM target name
+//     is the underscored variant to avoid collision.
+//   - `_FirebaseFirestoreInternalWrapper` source target (Obj-C shim around
+//     the binary's headers). Renamed in SPM space; reachable from Firestore
+//     Swift code via a moduleAlias.
+//   - `_FirebaseFirestore` source target (Swift wrapper). Underscored. Its
+//     product is exported as `FirebaseFirestore`; consumers add a
+//     moduleAlias to see it under the unprefixed name.
+//   - Firebase Core / SharedSwift / CoreExtension / AppCheckInterop /
+//     AuthInterop come from upstream firebase-ios-sdk, pulled either by
+//     direct product references (FirebaseCore) or transitively via heavier
+//     products that bring internal-only targets into the build graph
+//     (FirebaseAuth → CoreExtension, AppCheckInterop, AuthInterop;
+//     FirebaseRemoteConfig → SharedSwift). Source-compile cost: seconds, on
+//     every platform including visionOS.
 //
-// HACK — openssl_grpc modulemap module name was renamed `BoringSSL-GRPC` →
-// `openssl_grpc` in every slice via `scripts/normalize-openssl-grpc-modulemap.sh`.
-// CocoaPods historically named the module `BoringSSL-GRPC` but the framework
-// dir on disk is `openssl_grpc.framework`. Clang rejects hyphens in module
-// identifiers; the rename allows direct SPM source-target deps without
-// changing any binary symbols. Re-run the normalize script if the xcframework
-// is rebuilt or its iOS slices refreshed from Google's release.
+// HACK — openssl_grpc modulemap module identifier was renamed from
+// `BoringSSL-GRPC` to `openssl_grpc` in every slice via
+// scripts/normalize-openssl-grpc-modulemap.sh. Re-run that script if the
+// xcframework is rebuilt or its iOS slices refreshed from Google's release.
 
 import PackageDescription
 
@@ -30,22 +44,25 @@ let package = Package(
         .visionOS(.v1),
     ],
     products: [
-        .library(name: "FirebaseFirestore", targets: ["FirebaseFirestore"]),
-        .library(name: "FirebaseCore", targets: ["FirebaseCore"]),
+        // Product name is `Firestore` (not `FirebaseFirestore`) to avoid a
+        // PIF-level product-name collision with firebase-ios-sdk, which also
+        // ships a product named `FirebaseFirestore`. Consumers depend on
+        // this product with a moduleAlias mapping our `_FirebaseFirestore`
+        // target's module to `FirebaseFirestore`, so consumer code keeps
+        // using the standard `import FirebaseFirestore`:
+        //
+        //   .product(name: "Firestore",
+        //            package: "firebase-firestore-xcframeworks",
+        //            moduleAliases: ["_FirebaseFirestore": "FirebaseFirestore"])
+        .library(name: "Firestore", targets: ["_FirebaseFirestore"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/google/GoogleUtilities.git", "8.1.0" ..< "9.0.0"),
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", exact: "11.15.0"),
         .package(url: "https://github.com/firebase/nanopb.git", "2.30910.0" ..< "2.30911.0"),
     ],
     targets: [
-        // MARK: - Local binaryTargets (visionOS slices baked in)
+        // MARK: - Local binaryTargets
 
-        // Renamed with a "firestore_" prefix to avoid SPM target-name collisions
-        // with upstream's external deps (abseil-cpp-binary, grpc-binary,
-        // firebase/leveldb), which declare targets named `absl`, `grpc`,
-        // `grpcpp`, `openssl_grpc`, `leveldb`. The renames are purely SPM
-        // identifiers — asset filenames, framework basenames, and linker
-        // `-framework <name>` references all stay as Google's originals.
         .binaryTarget(name: "firestore_absl",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/absl.xcframework.zip",
                       checksum: "959a61d05f95f831193454282a90c32cb167aaeb22abfd2b636c915c0b9e8bf3"),
@@ -61,98 +78,59 @@ let package = Package(
         .binaryTarget(name: "firestore_leveldb",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/leveldb.xcframework.zip",
                       checksum: "72c900231e7880febd6172f9ecea89eff5893a7b19c02bab256e1162f6015014"),
-        .binaryTarget(name: "FirebaseFirestoreInternal",
+        .binaryTarget(name: "_FirebaseFirestoreInternal",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/FirebaseFirestoreInternal.xcframework.zip",
                       checksum: "4ac88cf4607aff62e75f62833d70cc6415f47bb7e063e737946c25e7d9ce9a2c"),
 
-        // MARK: - Firebase umbrella + Core
+        // MARK: - Firestore Obj-C wrapper around the binary
 
+        // The vendored Firestore Swift sources do:
+        //   #if SWIFT_PACKAGE
+        //     @_exported import FirebaseFirestoreInternalWrapper
+        //   #else
+        //     @_exported import FirebaseFirestoreInternal
+        //   #endif
+        // SWIFT_PACKAGE is always defined under SPM, so a module named
+        // FirebaseFirestoreInternalWrapper must be visible to our Swift
+        // wrapper. We name the SPM target `_FirebaseFirestoreInternalWrapper`
+        // (to avoid collision with upstream's same-named target) and use
+        // moduleAliases at the dependency edge to make it appear as
+        // `FirebaseFirestoreInternalWrapper` to compilers downstream.
         .target(
-            name: "Firebase",
-            path: "CoreOnly/Sources",
-            publicHeadersPath: "./"
-        ),
-        .target(
-            name: "FirebaseCore",
-            dependencies: [
-                "Firebase",
-                "FirebaseCoreInternal",
-                .product(name: "GULEnvironment", package: "GoogleUtilities"),
-                .product(name: "GULLogger", package: "GoogleUtilities"),
-            ],
-            path: "FirebaseCore/Sources",
-            resources: [.process("Resources/PrivacyInfo.xcprivacy")],
-            publicHeadersPath: "Public",
-            cSettings: [
-                .headerSearchPath("../.."),
-                .define("Firebase_VERSION", to: firebaseVersion),
-            ],
-            linkerSettings: [
-                .linkedFramework("UIKit", .when(platforms: [.iOS, .macCatalyst, .tvOS, .visionOS])),
-                .linkedFramework("AppKit", .when(platforms: [.macOS])),
-            ]
-        ),
-        .target(
-            name: "FirebaseCoreExtension",
-            path: "FirebaseCore/Extension",
-            resources: [.process("Resources/PrivacyInfo.xcprivacy")],
-            publicHeadersPath: ".",
-            cSettings: [
-                .headerSearchPath("../../"),
-            ]
-        ),
-        .target(
-            name: "FirebaseCoreInternal",
-            dependencies: [
-                .product(name: "GULNSData", package: "GoogleUtilities"),
-            ],
-            path: "FirebaseCore/Internal/Sources",
-            resources: [.process("Resources/PrivacyInfo.xcprivacy")]
-        ),
-        .target(
-            name: "FirebaseSharedSwift",
-            path: "FirebaseSharedSwift/Sources",
-            exclude: [
-                "third_party/FirebaseDataEncoder/LICENSE",
-                "third_party/FirebaseDataEncoder/METADATA",
-            ]
-        ),
-
-        // MARK: - Firestore (binary path on all platforms)
-
-        // ObjC wrapper target that re-exports the binary's public headers.
-        // The Swift sources in `Firestore/Swift/Source/` `@_exported import
-        // FirebaseFirestoreInternalWrapper` when SWIFT_PACKAGE is defined
-        // (always true under SPM), so this target name must exist.
-        // Mirrors upstream's binary-path wrapper.
-        .target(
-            name: "FirebaseFirestoreInternalWrapper",
+            name: "_FirebaseFirestoreInternalWrapper",
             dependencies: [.target(
-                name: "FirebaseFirestoreInternal",
+                name: "_FirebaseFirestoreInternal",
                 condition: .when(platforms: [.iOS, .macCatalyst, .tvOS, .macOS, .visionOS])
             )],
             path: "FirebaseFirestoreInternal",
             publicHeadersPath: "."
         ),
 
+        // MARK: - Firestore Swift wrapper
+
         .target(
-            name: "FirebaseFirestore",
+            name: "_FirebaseFirestore",
             dependencies: [
-                "FirebaseCore",
-                "FirebaseCoreExtension",
-                "FirebaseFirestoreInternalWrapper",
-                "FirebaseSharedSwift",
+                "_FirebaseFirestoreInternalWrapper",
                 "firestore_absl",
                 "firestore_grpc",
                 "firestore_grpcpp",
                 "firestore_openssl_grpc",
                 "firestore_leveldb",
+                .product(name: "FirebaseCore", package: "firebase-ios-sdk"),
+                // FirebaseAuth product transitively pulls FirebaseAppCheckInterop,
+                // FirebaseAuthInterop, FirebaseCoreExtension — internal-only
+                // targets that aren't exposed as products by upstream.
+                .product(name: "FirebaseAuth", package: "firebase-ios-sdk"),
+                // FirebaseRemoteConfig transitively pulls FirebaseSharedSwift.
+                .product(name: "FirebaseRemoteConfig", package: "firebase-ios-sdk"),
                 .product(name: "nanopb", package: "nanopb"),
             ],
             path: "Firestore/Swift/Source",
             resources: [.process("Resources/PrivacyInfo.xcprivacy")],
             linkerSettings: [
-                .linkedFramework("SystemConfiguration", .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
+                .linkedFramework("SystemConfiguration",
+                                 .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
                 .linkedFramework("UIKit", .when(platforms: [.iOS, .tvOS, .visionOS])),
                 .linkedLibrary("c++"),
             ]

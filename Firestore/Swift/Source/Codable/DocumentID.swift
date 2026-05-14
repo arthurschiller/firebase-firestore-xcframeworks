@@ -15,7 +15,7 @@
  */
 
 #if SWIFT_PACKAGE
-  @_exported import FirebaseFirestoreInternalWrapper
+  @_exported import _FirebaseFirestoreInternalWrapper
 #else
   @_exported import FirebaseFirestoreInternal
 #endif // SWIFT_PACKAGE

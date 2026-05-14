@@ -59,4 +59,4 @@ extension CodableTimestamp {
 }
 
 /** Extends Timestamp to conform to Codable. */
-extension FirebaseCore.Timestamp: FirebaseFirestore.CodableTimestamp {}
+extension FirebaseCore.Timestamp: _FirebaseFirestore.CodableTimestamp {}

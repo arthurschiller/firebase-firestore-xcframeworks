@@ -23,6 +23,8 @@ let package = Package(
     products: [
         .library(name: "FirebaseFirestoreInternalWrapper",
                  targets: ["FirebaseFirestoreInternalWrapper"]),
+        .library(name: "FirebaseFirestore",
+                 targets: ["FirebaseFirestore"]),
     ],
     dependencies: [
         .package(url: "https://github.com/google/GoogleUtilities.git", "8.1.0" ..< "9.0.0"),
@@ -66,6 +68,17 @@ let package = Package(
                 exclude: ["CMakeLists.txt"],
                 publicHeadersPath: "Public",
                 cSettings: [.headerSearchPath("../../")]),
+        .target(name: "FirebaseCoreExtension",
+                path: "FirebaseCore/Extension",
+                resources: [.process("Resources/PrivacyInfo.xcprivacy")],
+                publicHeadersPath: ".",
+                cSettings: [.headerSearchPath("../../")]),
+        .target(name: "FirebaseSharedSwift",
+                path: "FirebaseSharedSwift/Sources",
+                exclude: [
+                    "third_party/FirebaseDataEncoder/LICENSE",
+                    "third_party/FirebaseDataEncoder/METADATA",
+                ]),
 
         .target(
             name: "FirebaseFirestoreInternalWrapper",
@@ -127,6 +140,27 @@ let package = Package(
                                  .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
                 .linkedFramework("UIKit",
                                  .when(platforms: [.iOS, .tvOS, .visionOS])),
+                .linkedLibrary("c++"),
+            ]
+        ),
+
+        // FirebaseFirestore Swift wrapper — same shape as upstream's binary path
+        // FirebaseFirestore target, but compiled here so we can archive it as
+        // an xcframework with visionOS slices.
+        .target(
+            name: "FirebaseFirestore",
+            dependencies: [
+                "FirebaseCore",
+                "FirebaseCoreExtension",
+                .target(name: "FirebaseFirestoreInternalWrapper",
+                        condition: .when(platforms: [.iOS, .macCatalyst, .tvOS, .macOS, .visionOS])),
+                "FirebaseSharedSwift",
+            ],
+            path: "Firestore/Swift/Source",
+            resources: [.process("Resources/PrivacyInfo.xcprivacy")],
+            linkerSettings: [
+                .linkedFramework("SystemConfiguration", .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
+                .linkedFramework("UIKit", .when(platforms: [.iOS, .tvOS, .visionOS])),
                 .linkedLibrary("c++"),
             ]
         ),

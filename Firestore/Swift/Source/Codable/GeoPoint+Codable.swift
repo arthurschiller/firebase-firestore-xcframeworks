@@ -15,7 +15,7 @@
  */
 
 #if SWIFT_PACKAGE
-  @_exported import FirebaseFirestoreInternalWrapper
+  @_exported import _FirebaseFirestoreInternalWrapper
 #else
   @_exported import FirebaseFirestoreInternal
 #endif // SWIFT_PACKAGE
@@ -63,4 +63,4 @@ extension CodableGeoPoint {
 }
 
 /** Extends GeoPoint to conform to Codable. */
-extension FirebaseFirestore.GeoPoint: FirebaseFirestore.CodableGeoPoint {}
+extension _FirebaseFirestore.GeoPoint: _FirebaseFirestore.CodableGeoPoint {}

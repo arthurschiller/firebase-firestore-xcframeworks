@@ -15,13 +15,13 @@
  */
 
 #if SWIFT_PACKAGE
-  @_exported import FirebaseFirestoreInternalWrapper
+  @_exported import _FirebaseFirestoreInternalWrapper
 #else
   @_exported import FirebaseFirestoreInternal
 #endif // SWIFT_PACKAGE
 
 /** Extends FieldValue to conform to Encodable. */
-extension FirebaseFirestore.FieldValue: Swift.Encodable {
+extension _FirebaseFirestore.FieldValue: Swift.Encodable {
   /// Encoding a FieldValue will throw by default unless the encoder implementation
   /// explicitly handles it, which is what Firestore.Encoder does.
   public func encode(to encoder: Encoder) throws {
