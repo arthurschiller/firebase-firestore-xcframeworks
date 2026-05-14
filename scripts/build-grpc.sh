@@ -101,9 +101,15 @@ build_slice() {
   # Exclude: BoringSSL (separate framework), c-ares (disabled), full protobuf (using upb).
   mapfile -t grpc_libs < <({
     find "$build_dir" -name "libgrpc.a" -type f
+    # libgpr.a is grpc's portable runtime (gpr_malloc / gpr_mu_init / etc.).
+    # Originally omitted; consumers' link failed on `_gpr_*` undefined symbols.
+    find "$build_dir" -name "libgpr.a" -type f
+    # upb / utf8_range_lib are emitted at $build_dir root in this CMake config
+    # (no `third_party/upb/` subdir). Earlier patterns missed them and
+    # consumer link failed on `_upb_*` / `__upb_*` undefined symbols.
+    find "$build_dir" -maxdepth 1 -name "libupb_*.a" -type f 2>/dev/null
+    find "$build_dir" -maxdepth 1 -name "libutf8_range_lib.a" -type f 2>/dev/null
     find "$build_dir/third_party/abseil-cpp" -name "libabsl_*.a" -type f 2>/dev/null
-    find "$build_dir" -path "*/third_party/upb/*" -name "libupb_*.a" -type f 2>/dev/null
-    find "$build_dir" -path "*/third_party/upb/*" -name "libutf8_range*.a" -type f 2>/dev/null
     find "$build_dir/third_party/re2" -name "libre2.a" -type f 2>/dev/null
     find "$build_dir/third_party/zlib" -name "libz.a" -o -name "libzlibstatic.a" -type f 2>/dev/null
     find "$build_dir" -name "libaddress_sorting.a" -type f 2>/dev/null

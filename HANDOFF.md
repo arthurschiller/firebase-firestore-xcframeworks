@@ -44,9 +44,65 @@ These are not up for re-debate without explicit user input:
 | 3. gRPC (grpc + grpcpp) | ✅ | `1b7b7ad` — 8 slices, partial ABI gaps documented in CLAUDE.md (most likely Firestore-irrelevant) |
 | 4 part 1. leveldb + nanopb | ✅ | `484cc84` — both built and merged, 8 + 10 slices |
 | 4 part 2. FirebaseFirestoreInternal binary | DEFERRED | See "Phase 4 part 2 backlog" below |
-| 5. Package.swift + TestConsumer | **NEXT** | See "Phase 5 plan" below |
-| 6. CI port | pending | Wrap proven local scripts in `.github/workflows/build.yml` |
+| 5. Package.swift + TestGround | ✅ | Minimal Package.swift exposes `FirebaseFirestore` + `FirebaseCore`. Source-compile Firestore C++ against our 6 binaryTargets (absl/openssl_grpc/grpc/grpcpp/leveldb + nanopb-as-source). TestGround Xcode project builds green on visionOS Sim / iOS Sim / macOS / Mac Catalyst. |
+| 6. CI port | **NEXT** | Wrap proven local scripts in `.github/workflows/build.yml` |
 | 7. Scenery cutover patch | pending | 5-line patch for Arthur to apply, only after Phase 5 green |
+
+## Phase 5 — what shipped (vs. what HANDOFF originally planned)
+
+Original plan said "fork upstream `Package.swift` verbatim, swap 6 binaryTargets". Reality: vendoring the full upstream SDK is ~70 MB and reaches paths we don't care about. We pivoted to a **minimal hand-written Package.swift** exposing only `FirebaseFirestore` + `FirebaseCore` and vendored exactly the source dirs those need (`Firestore/`, `FirebaseCore/`, `FirebaseSharedSwift/`, `FirebaseAppCheck/Interop/`, `FirebaseAuth/Interop/`, `CoreOnly/`, `SwiftPM-PlatformExclude/FirebaseFirestoreWrap/`). ~13.5 MB vendored, none of it from products the consumer doesn't use.
+
+### Hacks introduced — flagged for review
+
+1. **`scripts/normalize-openssl-grpc-modulemap.sh`** — rewrites every slice of
+   `build/artifacts/openssl_grpc/openssl_grpc.xcframework/*/openssl_grpc.framework/Modules/module.modulemap`
+   to use `framework module openssl_grpc` (was `BoringSSL-GRPC`). Clang rejects
+   hyphens in module identifiers, so without this rename a source target listing
+   `openssl_grpc` as a dependency dies at modulemap parse. Binary symbols are
+   untouched — module name is pure compile-time metadata. **Must be re-run** if
+   the openssl_grpc.xcframework is ever rebuilt or its iOS slices refreshed
+   from Google's release zip (Google's iOS modulemap also says
+   `BoringSSL-GRPC`).
+
+2. **`FirebaseFirestoreInternalWrapper` directly depends on `openssl_grpc`** —
+   the original HANDOFF instruction "do NOT add direct source-target dependency
+   on openssl_grpc (modulemap hyphen issue)" is **invalidated by Hack #1**. With
+   the modulemap normalized, openssl_grpc is depended on directly; this is
+   necessary so the linker sees `-framework openssl_grpc` and resolves
+   `_GRPC_ASN1_STRING_to_UTF8` and other BoringSSL symbols that grpc's binary
+   references.
+
+3. **nanopb is source-compiled via `firebase/nanopb` SPM package, not our
+   binaryTarget** — our `nanopb.xcframework` builds successfully, but SPM
+   doesn't expose a binaryTarget framework's `Headers/` directory as a flat
+   `HEADER_SEARCH_PATHS` entry, so Firestore C++'s `#include <pb.h>` can't
+   find headers without modules. nanopb is tiny (~6 files / ~50 KB), so
+   source-compile cost is negligible on visionOS. The `nanopb.xcframework`
+   artifact stays available for any future binary path (Phase 4 part 2).
+
+4. **`scripts/build-grpc.sh` bundle list missing `libgpr.a` + `libupb_*.a`** —
+   Phase 3 documented "11 missing public `_grpc_*` symbols and ~5000 absl
+   template instantiations". Reality was worse: the original `libtool` bundle
+   step omitted `libgpr.a` (grpc's portable runtime — gpr_malloc/gpr_mu_init/
+   etc.) and the upb finder pattern was wrong (looked in
+   `third_party/upb/` but CMake emits libs at the build-dir root). Fixed in
+   place; visionOS slice rebundled from cached CMake output. iOS/macOS/
+   Catalyst slices remain Google's bytes (unaffected — they had these symbols
+   all along).
+
+5. **`build/artifacts/` paths are local-only** — `Package.swift` uses
+   `path: "build/artifacts/.../<name>.xcframework"` for the 5 remaining
+   binaryTargets. `build/` is gitignored, so this repo is NOT yet
+   consumer-shareable. Phase 6 will replace these with
+   `.binaryTarget(url:..., checksum:...)` pointing at GH Release assets.
+
+6. **Generic visionOS Simulator destination doesn't work** — `xcodebuild
+   -destination 'generic/platform=visionOS Simulator'` requests both arm64
+   and x86_64 sim slices; our xcframeworks ship arm64 only. For testing,
+   use a specific sim destination (e.g.
+   `platform=visionOS Simulator,id=<arm64 sim UDID>`). For shipping to
+   consumers we may need to add x86_64 sim slices later (Rosetta visionOS
+   sim is rare in practice).
 
 ## Repo layout (committed)
 

@@ -18,8 +18,9 @@ boringssl/
 .claude/settings.local.json
 
 # Xcode / SPM
-*.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
 .swiftpm/
 Package.resolved
 DerivedData/
