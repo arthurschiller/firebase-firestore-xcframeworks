@@ -109,7 +109,13 @@ build_slice() {
     # consumer link failed on `_upb_*` / `__upb_*` undefined symbols.
     find "$build_dir" -maxdepth 1 -name "libupb_*.a" -type f 2>/dev/null
     find "$build_dir" -maxdepth 1 -name "libutf8_range_lib.a" -type f 2>/dev/null
-    find "$build_dir/third_party/abseil-cpp" -name "libabsl_*.a" -type f 2>/dev/null
+    # Do NOT bundle libabsl_*.a into grpc.framework. absl symbols are provided
+    # by absl.xcframework as a separate framework; bundling them here creates
+    # duplicate symbols at consumer link time when both frameworks are linked
+    # into the same binary (observed on visionOS where both slices come from
+    # our local build; not an issue on iOS where Google's prebuilt slices
+    # handle dedup via co-build).
+    # find "$build_dir/third_party/abseil-cpp" -name "libabsl_*.a" -type f 2>/dev/null
     find "$build_dir/third_party/re2" -name "libre2.a" -type f 2>/dev/null
     find "$build_dir/third_party/zlib" -name "libz.a" -o -name "libzlibstatic.a" -type f 2>/dev/null
     find "$build_dir" -name "libaddress_sorting.a" -type f 2>/dev/null

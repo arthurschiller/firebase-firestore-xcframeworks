@@ -31,6 +31,15 @@
 // `BoringSSL-GRPC` to `openssl_grpc` in every slice via
 // scripts/normalize-openssl-grpc-modulemap.sh. Re-run that script if the
 // xcframework is rebuilt or its iOS slices refreshed from Google's release.
+//
+// HACK — grpc.xcframework's visionOS slices were originally built with
+// libabsl_*.a bundled into the binary (per scripts/build-grpc.sh, mirroring
+// Google's iOS build). That created duplicate-symbol link errors in
+// consumer apps because absl.xcframework also provides those symbols on
+// visionOS. Fix: scripts/build-grpc.sh no longer bundles libabsl_*.a;
+// absl symbols come exclusively from firestore_absl. Google's iOS slices
+// are untouched. If grpc is ever rebuilt from scratch, ensure the
+// libabsl_*.a bundling line stays removed.
 
 import PackageDescription
 
@@ -69,8 +78,12 @@ let package = Package(
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/openssl_grpc.xcframework.zip",
                       checksum: "b0a0b744a3699bf741b7ada2a2892e1d8f3d0d4b40bf509685ee0916060236b2"),
         .binaryTarget(name: "firestore_grpc",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/grpc.xcframework.zip",
-                      checksum: "bfca1a75fa2bf4bb4b7963edbe0889f77c031f2507ac5a7235b6576e122d3f21"),
+                      // Re-released under 11.15.4 after rebuilding visionOS slices
+                      // without bundling libabsl_*.a — those symbols are now
+                      // provided exclusively by firestore_absl, eliminating
+                      // duplicate-symbol link errors in consumer apps on visionOS.
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.4/grpc.xcframework.zip",
+                      checksum: "92fb564a3482c1736815b773040c83d9e78773686519ac433a2079b5736b73ec"),
         .binaryTarget(name: "firestore_grpcpp",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/grpcpp.xcframework.zip",
                       checksum: "fb07719d3313e99f729de9f2f26fafbe141d7288ff89c60a0c576480b8d8caef"),
