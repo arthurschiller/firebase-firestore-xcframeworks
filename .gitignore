@@ -17,6 +17,11 @@ boringssl/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Internal notes — kept locally, not in git
+HANDOFF.md
+prompt.md
+docs/
+
 # Xcode / SPM
 **/*.xcodeproj/xcuserdata/
 **/*.xcodeproj/project.xcworkspace/xcuserdata/
