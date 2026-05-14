@@ -40,19 +40,25 @@ let package = Package(
     targets: [
         // MARK: - Local binaryTargets (visionOS slices baked in)
 
-        .binaryTarget(name: "absl",
+        // Renamed with a "firestore_" prefix to avoid SPM target-name collisions
+        // with upstream's external deps (abseil-cpp-binary, grpc-binary,
+        // firebase/leveldb), which declare targets named `absl`, `grpc`,
+        // `grpcpp`, `openssl_grpc`, `leveldb`. The renames are purely SPM
+        // identifiers — asset filenames, framework basenames, and linker
+        // `-framework <name>` references all stay as Google's originals.
+        .binaryTarget(name: "firestore_absl",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/absl.xcframework.zip",
                       checksum: "959a61d05f95f831193454282a90c32cb167aaeb22abfd2b636c915c0b9e8bf3"),
-        .binaryTarget(name: "openssl_grpc",
+        .binaryTarget(name: "firestore_openssl_grpc",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/openssl_grpc.xcframework.zip",
                       checksum: "b0a0b744a3699bf741b7ada2a2892e1d8f3d0d4b40bf509685ee0916060236b2"),
-        .binaryTarget(name: "grpc",
+        .binaryTarget(name: "firestore_grpc",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/grpc.xcframework.zip",
                       checksum: "bfca1a75fa2bf4bb4b7963edbe0889f77c031f2507ac5a7235b6576e122d3f21"),
-        .binaryTarget(name: "grpcpp",
+        .binaryTarget(name: "firestore_grpcpp",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/grpcpp.xcframework.zip",
                       checksum: "fb07719d3313e99f729de9f2f26fafbe141d7288ff89c60a0c576480b8d8caef"),
-        .binaryTarget(name: "leveldb",
+        .binaryTarget(name: "firestore_leveldb",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/leveldb.xcframework.zip",
                       checksum: "72c900231e7880febd6172f9ecea89eff5893a7b19c02bab256e1162f6015014"),
         .binaryTarget(name: "FirebaseFirestoreInternal",
@@ -136,11 +142,11 @@ let package = Package(
                 "FirebaseCoreExtension",
                 "FirebaseFirestoreInternalWrapper",
                 "FirebaseSharedSwift",
-                "absl",
-                "grpc",
-                "grpcpp",
-                "openssl_grpc",
-                "leveldb",
+                "firestore_absl",
+                "firestore_grpc",
+                "firestore_grpcpp",
+                "firestore_openssl_grpc",
+                "firestore_leveldb",
                 .product(name: "nanopb", package: "nanopb"),
             ],
             path: "Firestore/Swift/Source",
