@@ -1,0 +1,22 @@
+# Build outputs
+build/
+.build/
+*.xcframework.zip
+
+# Downloaded upstream artifacts
+Firebase.zip
+Firebase/
+firebase-ios-sdk/
+grpc/
+abseil-cpp/
+boringssl/
+
+# macOS
+.DS_Store
+
+# Xcode / SPM
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.swiftpm/
+Package.resolved
+DerivedData/
