@@ -9,6 +9,8 @@
 #   4. xcodebuild -create-xcframework merging Google's 6 slices + our 2
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/_build_common.sh"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$REPO_ROOT/build/sources/abseil-cpp"
 GOOGLE_ABSL="$REPO_ROOT/build/downloads/Firebase-extracted/Firebase/FirebaseFirestore/absl.xcframework"
@@ -44,6 +46,7 @@ build_slice() {
   # CMake configure
   cmake -S "$SRC" -B "$build_dir" \
     -G "Unix Makefiles" \
+    "${CMAKE_CCACHE_ARGS[@]}" \
     -DCMAKE_SYSTEM_NAME=visionOS \
     -DCMAKE_OSX_SYSROOT="$sdk" \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -57,7 +60,7 @@ build_slice() {
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
   # Build
-  cmake --build "$build_dir" -j
+  cmake --build "$build_dir" -j$PARALLEL_JOBS
 
   # Collect all libabsl_*.a from build tree
   mapfile -t libs < <(find "$build_dir" -name "libabsl_*.a" -type f)

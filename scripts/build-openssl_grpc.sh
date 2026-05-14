@@ -12,6 +12,8 @@
 #   5. Merge with Google's existing openssl_grpc.xcframework
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/_build_common.sh"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRPC_SRC="$REPO_ROOT/build/sources/grpc"
 BSL_SRC="$GRPC_SRC/third_party/boringssl-with-bazel"
@@ -57,6 +59,7 @@ build_slice() {
 
   cmake -S "$BSL_SRC" -B "$build_dir" \
     -G "Unix Makefiles" \
+    "${CMAKE_CCACHE_ARGS[@]}" \
     -DCMAKE_SYSTEM_NAME=visionOS \
     -DCMAKE_OSX_SYSROOT="$sdk" \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -67,7 +70,7 @@ build_slice() {
     -DCMAKE_C_FLAGS="-DOPENSSL_NO_ASM -DBORINGSSL_PREFIX=GRPC -fvisibility=hidden -fno-common" \
     -DCMAKE_CXX_FLAGS="-DOPENSSL_NO_ASM -DBORINGSSL_PREFIX=GRPC -fvisibility=hidden -fno-common -fno-exceptions -fno-rtti"
 
-  cmake --build "$build_dir" --target ssl crypto -j
+  cmake --build "$build_dir" --target ssl crypto -j$PARALLEL_JOBS
 
   local ssl_lib="$build_dir/libssl.a"
   local crypto_lib="$build_dir/libcrypto.a"
