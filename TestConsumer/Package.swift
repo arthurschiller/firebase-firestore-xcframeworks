@@ -1,6 +1,12 @@
 // swift-tools-version:5.9
-// Phase 1 TestConsumer: validates the merged absl.xcframework resolves +
-// links + runs on each target platform via a C++ shim wrapping absl::StrCat.
+// TestConsumer: validates merged xcframeworks via C/C++ shims that exercise
+// real library APIs from Swift on iOS sim / macOS / Catalyst / visionOS sim.
+//
+// Note: openssl_grpc is a transitive-only dependency (consumed by grpc /
+// grpcpp / Firestore C++ — never directly from source code). Its modulemap
+// uses a hyphenated module name that Clang can't parse if a source target
+// tries to depend on it directly. So we don't declare a shim for it here;
+// Phase 3 (gRPC) and Phase 4 (Firestore) will exercise it transitively.
 import PackageDescription
 
 let package = Package(
@@ -23,9 +29,7 @@ let package = Package(
             name: "AbseilCxxShim",
             dependencies: ["absl"],
             publicHeadersPath: "include",
-            cxxSettings: [
-                .headerSearchPath("."),
-            ]
+            cxxSettings: [.headerSearchPath(".")]
         ),
         .target(
             name: "AbseilSmokeTest",
