@@ -56,3 +56,19 @@ source "$(dirname "${BASH_SOURCE[0]}")/_build_common.sh"
 
 Then use `-j$PARALLEL_JOBS` in every build invocation and
 `"${CMAKE_CCACHE_ARGS[@]}"` in every `cmake` configure line.
+
+## Releasing — always zip with `-y`
+
+XCFramework release zips MUST be created with `zip -y` (preserve symlinks):
+
+```bash
+zip -qry foo.xcframework.zip foo.xcframework
+```
+
+Without `-y`, zip follows macOS-style framework symlinks
+(`Versions/Current → A`, top-level `<binary> → Versions/Current/<binary>`,
+etc.) and stores duplicate files instead of the symlinks. Catalyst codesign
+then fails with "Couldn't resolve framework symlink for Versions/Current
+... NSPOSIXErrorDomain Code=22 Invalid argument". iOS/visionOS slices use
+flat structure so they look fine in casual testing — the bug only surfaces
+on macOS / Mac Catalyst.

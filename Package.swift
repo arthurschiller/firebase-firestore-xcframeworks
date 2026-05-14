@@ -79,26 +79,28 @@ let package = Package(
         // MARK: - Local binaryTargets
 
         .binaryTarget(name: "firestore_absl",
-                      // Re-released under 11.15.5 after rebuilding visionOS slices
-                      // with ABSL_OPTION_USE_STD_* forced to 0 (distinct-class ABI).
-                      // The previous build's auto-detect produced std::string_view
-                      // aliasing, mangling differently than gRPC's bundled absl —
-                      // breaking visionOS link with undefined symbol errors.
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.5/absl.xcframework.zip",
-                      checksum: "8ba5ac93460c99955306c11cd036aafd1db9e05b5013f0b29731aa64a902f435"),
+                      // 11.15.6 build: visionOS slices with ABSL_OPTION_USE_STD_*
+                      // forced to 0 (distinct-class ABI matching gRPC's bundled
+                      // absl), AND re-zipped with `zip -y` to preserve macOS-style
+                      // framework symlinks. Earlier 11.15.5 zip dereferenced
+                      // Versions/Current symlinks, breaking Catalyst codesign.
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/absl.xcframework.zip",
+                      checksum: "f3b2a3bb92c1d1f155184088123184d164d239493bb9d4bfb373051ece59f4f7"),
         .binaryTarget(name: "firestore_openssl_grpc",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/openssl_grpc.xcframework.zip",
                       checksum: "b0a0b744a3699bf741b7ada2a2892e1d8f3d0d4b40bf509685ee0916060236b2"),
         .binaryTarget(name: "firestore_grpc",
-                      // Re-released under 11.15.4 after rebuilding visionOS slices
-                      // without bundling libabsl_*.a — those symbols are now
-                      // provided exclusively by firestore_absl, eliminating
-                      // duplicate-symbol link errors in consumer apps on visionOS.
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.4/grpc.xcframework.zip",
-                      checksum: "92fb564a3482c1736815b773040c83d9e78773686519ac433a2079b5736b73ec"),
+                      // 11.15.6 build: visionOS slices without bundled libabsl_*.a
+                      // (absl symbols come from firestore_absl), AND re-zipped
+                      // with `zip -y` to preserve framework symlinks for Catalyst.
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/grpc.xcframework.zip",
+                      checksum: "4aafe55b44a5ad7be798f4bdd46f970413e198321e7b283aab2c94cc0a9e59f5"),
         .binaryTarget(name: "firestore_grpcpp",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/grpcpp.xcframework.zip",
-                      checksum: "fb07719d3313e99f729de9f2f26fafbe141d7288ff89c60a0c576480b8d8caef"),
+                      // 11.15.6 build: re-zipped with `zip -y` to preserve
+                      // framework symlinks (the 11.15.0 zip dereferenced them,
+                      // breaking Catalyst codesign).
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/grpcpp.xcframework.zip",
+                      checksum: "9a86a314b22c45d07f3fd29905a5c5376f3d6bfa3f56a12262332fdc05519171"),
         .binaryTarget(name: "firestore_leveldb",
                       url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/leveldb.xcframework.zip",
                       checksum: "72c900231e7880febd6172f9ecea89eff5893a7b19c02bab256e1162f6015014"),
