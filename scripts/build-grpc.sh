@@ -99,7 +99,9 @@ build_slice() {
   # Collect archives to bundle into grpc binary.
   # Include: gRPC core + abseil + upb + re2 + zlib + address_sorting.
   # Exclude: BoringSSL (separate framework), c-ares (disabled), full protobuf (using upb).
-  mapfile -t grpc_libs < <({
+  # Avoid `mapfile` so the script runs under macOS's stock bash 3.2 (which CI uses).
+  grpc_libs=()
+  while IFS= read -r f; do grpc_libs+=("$f"); done < <({
     find "$build_dir" -name "libgrpc.a" -type f
     # libgpr.a is grpc's portable runtime (gpr_malloc / gpr_mu_init / etc.).
     # Originally omitted; consumers' link failed on `_gpr_*` undefined symbols.

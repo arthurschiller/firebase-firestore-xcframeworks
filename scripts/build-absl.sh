@@ -73,8 +73,10 @@ build_slice() {
   # Build
   cmake --build "$build_dir" -j$PARALLEL_JOBS
 
-  # Collect all libabsl_*.a from build tree
-  mapfile -t libs < <(find "$build_dir" -name "libabsl_*.a" -type f)
+  # Collect all libabsl_*.a from build tree. Avoid `mapfile` so the script
+  # runs under macOS's stock bash 3.2 (which CI uses).
+  libs=()
+  while IFS= read -r f; do libs+=("$f"); done < <(find "$build_dir" -name "libabsl_*.a" -type f)
   if [ "${#libs[@]}" -eq 0 ]; then
     echo "ERROR: no libabsl_*.a produced under $build_dir"
     exit 1

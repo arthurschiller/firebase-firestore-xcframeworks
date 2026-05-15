@@ -42,7 +42,21 @@ declare -a FRAMEWORKS=(
   "FirebaseFirestoreInternal:FirebaseFirestoreInternal"
 )
 
-declare -A CHECKSUMS
+# Parallel arrays instead of `declare -A` so the script runs under macOS's
+# stock bash 3.2 (used by GitHub Actions runners).
+CHECKSUM_NAMES=()
+CHECKSUM_VALUES=()
+
+lookup_checksum() {
+  local name="$1" i
+  for i in "${!CHECKSUM_NAMES[@]}"; do
+    if [[ "${CHECKSUM_NAMES[$i]}" == "$name" ]]; then
+      echo "${CHECKSUM_VALUES[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
 
 echo "==== Zipping xcframeworks ===="
 for entry in "${FRAMEWORKS[@]}"; do
@@ -59,13 +73,13 @@ for entry in "${FRAMEWORKS[@]}"; do
   echo "  $(du -h "${zip_path}" | awk '{print $1}')\t${fw_name}.xcframework.zip"
 
   # swift package compute-checksum gives the value SPM expects for binaryTarget.
-  CHECKSUMS["${fw_name}"]="$(swift package compute-checksum "${zip_path}")"
+  CHECKSUM_NAMES+=("${fw_name}")
+  CHECKSUM_VALUES+=("$(swift package compute-checksum "${zip_path}")")
 done
 
 echo "==== Checksums ===="
-for entry in "${FRAMEWORKS[@]}"; do
-  IFS=":" read -r src_dir fw_name <<< "${entry}"
-  echo "  ${fw_name}: ${CHECKSUMS[${fw_name}]}"
+for i in "${!CHECKSUM_NAMES[@]}"; do
+  echo "  ${CHECKSUM_NAMES[$i]}: ${CHECKSUM_VALUES[$i]}"
 done
 
 echo "==== Generating URL-mode Package.swift ===="
@@ -78,9 +92,8 @@ python3 <<EOF > "${PKG_OUT}"
 import re, sys
 
 checksums = {
-$(for entry in "${FRAMEWORKS[@]}"; do
-    IFS=":" read -r src_dir fw_name <<< "${entry}"
-    echo "    \"${fw_name}\": \"${CHECKSUMS[${fw_name}]}\","
+$(for i in "${!CHECKSUM_NAMES[@]}"; do
+    echo "    \"${CHECKSUM_NAMES[$i]}\": \"${CHECKSUM_VALUES[$i]}\","
 done)
 }
 url_base = "${URL_BASE}"
