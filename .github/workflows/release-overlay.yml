@@ -1,0 +1,174 @@
+name: Release overlay
+
+# Manually-triggered workflow that rebuilds the overlay for a given Firebase
+# version on a GitHub-hosted macOS runner and (optionally) publishes a draft
+# GitHub Release. Designed so a "dry run" cannot affect any existing tag,
+# release, branch state, or Package.swift content.
+#
+# Safety model
+# ────────────
+#   inputs.dry_run = true  (default)
+#     - Build runs in CI.
+#     - Resulting xcframework zips + generated Package.swift are uploaded
+#       as a workflow ARTIFACT (downloadable from the run page, not public).
+#     - NO git push, NO tag creation, NO release.
+#     Use this for verifying the workflow itself or for previewing what a
+#     release would contain. Existing tags / releases / main are untouched.
+#
+#   inputs.dry_run = false
+#     - Same build.
+#     - Workflow refuses to proceed if the target tag already exists on
+#       origin (so a re-run can't overwrite a prior release).
+#     - Generated Package.swift + version-pin bumps are committed to main
+#       by `github-actions[bot]` and pushed.
+#     - A *draft* GitHub Release is created with the xcframework zips
+#       attached. Drafts are invisible to the public until you click
+#       "Publish release" in the web UI — providing a final manual gate
+#       even after a successful build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      firebase_version:
+        description: 'Firebase iOS SDK version to build for (e.g. 11.16.0)'
+        required: true
+        type: string
+      release_tag:
+        description: 'Tag for the GitHub Release (defaults to firebase_version; override for overlay-only patch re-spins like 11.15.7)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run: build + upload workflow artifacts only. No commit, no tag, no release.'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 360
+    env:
+      # CI has ~7 GB RAM on the default runner. gRPC's heavier translation
+      # units peak at ~1.5 GB each — keep concurrency conservative to avoid OOM.
+      PARALLEL_JOBS: '2'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.release_tag }}" ]; then
+            echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ inputs.firebase_version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refuse to overwrite existing tag (non-dry runs only)
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          if git rev-parse "$tag" >/dev/null 2>&1 \
+             || git ls-remote --tags origin "$tag" | grep -q "refs/tags/$tag"; then
+            echo "::error::Tag '$tag' already exists. Bump release_tag (e.g. 11.15.7) or delete the tag first."
+            exit 1
+          fi
+
+      - name: Show available Xcode versions
+        run: ls /Applications | grep -i '^Xcode' || true
+
+      - name: Select latest Xcode with visionOS SDK
+        run: |
+          # Prefer the newest Xcode_* on the runner. visionOS SDK ships in
+          # Xcode 15.2+, so any modern image works.
+          latest="$(ls -1 /Applications | grep -E '^Xcode(_[0-9.]+)?(\.app)?$' | sort -V | tail -1)"
+          if [ -z "$latest" ]; then
+            echo "::error::No Xcode found in /Applications"
+            exit 1
+          fi
+          echo "Selecting /Applications/$latest"
+          sudo xcode-select -s "/Applications/$latest/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk xrsimulator --show-sdk-version || echo "::warning::xrsimulator SDK not available — visionOS slices will fail"
+
+      - name: Install build tools
+        run: |
+          brew update --auto-update-secs 86400 >/dev/null 2>&1 || true
+          brew install ccache cmake ninja || true
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-fb${{ inputs.firebase_version }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ runner.os }}-fb${{ inputs.firebase_version }}-
+            ccache-${{ runner.os }}-
+
+      - name: Disk space before build
+        run: df -h /
+
+      - name: Run upgrade.sh
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -o pipefail
+          ./scripts/upgrade.sh "${{ inputs.firebase_version }}" 2>&1 | tee upgrade.log
+
+      - name: Disk space after build
+        if: always()
+        run: df -h /
+
+      - name: Upload build artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overlay-${{ steps.tag.outputs.tag }}-run${{ github.run_id }}
+          path: |
+            build/release/${{ inputs.firebase_version }}/*.xcframework.zip
+            build/release/${{ inputs.firebase_version }}/Package.swift
+            upgrade.log
+          retention-days: 14
+
+      - name: Stop here if dry run
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. Artifacts uploaded; nothing pushed."
+          echo "To publish for real, re-run with dry_run=false."
+
+      - name: Adopt generated Package.swift
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          cp "build/release/${{ inputs.firebase_version }}/Package.swift" Package.swift
+
+      - name: Commit + push to main
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::warning::No changes to commit — Package.swift was already up to date."
+          else
+            git commit -m "Upgrade overlay to Firebase ${{ inputs.firebase_version }} (workflow run ${{ github.run_id }})"
+            git push origin HEAD:main
+          fi
+          git tag "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
+      - name: Create draft GitHub Release
+        if: ${{ inputs.dry_run == false }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            build/release/${{ inputs.firebase_version }}/*.xcframework.zip \
+            --draft \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --notes "Auto-built by workflow run #${{ github.run_id }} on $(date -u +%Y-%m-%dT%H:%M:%SZ). Review the assets and Package.swift diff, then click **Publish release** to go live."
