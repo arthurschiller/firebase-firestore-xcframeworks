@@ -97,31 +97,28 @@ build_slice() {
   cmake --build "$build_dir" --target grpc grpc++ -j$PARALLEL_JOBS
 
   # Collect archives to bundle into grpc binary.
-  # Include: gRPC core + abseil + upb + re2 + zlib + address_sorting.
-  # Exclude: BoringSSL (separate framework), c-ares (disabled), full protobuf (using upb).
-  # Avoid `mapfile` so the script runs under macOS's stock bash 3.2 (which CI uses).
-  grpc_libs=()
-  while IFS= read -r f; do grpc_libs+=("$f"); done < <({
+  # Include: gRPC core + upb + re2 + zlib + address_sorting.
+  # Exclude: BoringSSL (separate framework), c-ares (disabled),
+  #          full protobuf (using upb),
+  #          abseil (separate framework — bundling causes dup-symbol link errors).
+  # Helper function instead of `{ … } | sort -u` group inline in <(...),
+  # because bash 3.2 (the macOS system bash used by GitHub Actions runners)
+  # mis-parses the inline group with embedded comments.
+  collect_grpc_libs() {
     find "$build_dir" -name "libgrpc.a" -type f
-    # libgpr.a is grpc's portable runtime (gpr_malloc / gpr_mu_init / etc.).
-    # Originally omitted; consumers' link failed on `_gpr_*` undefined symbols.
+    # libgpr.a: grpc's portable runtime (gpr_malloc / gpr_mu_init).
     find "$build_dir" -name "libgpr.a" -type f
-    # upb / utf8_range_lib are emitted at $build_dir root in this CMake config
-    # (no `third_party/upb/` subdir). Earlier patterns missed them and
-    # consumer link failed on `_upb_*` / `__upb_*` undefined symbols.
+    # upb / utf8_range_lib emit at $build_dir root in this CMake config
+    # (no third_party/upb/ subdir) — earlier patterns missed them.
     find "$build_dir" -maxdepth 1 -name "libupb_*.a" -type f 2>/dev/null
     find "$build_dir" -maxdepth 1 -name "libutf8_range_lib.a" -type f 2>/dev/null
-    # Do NOT bundle libabsl_*.a into grpc.framework. absl symbols are provided
-    # by absl.xcframework as a separate framework; bundling them here creates
-    # duplicate symbols at consumer link time when both frameworks are linked
-    # into the same binary (observed on visionOS where both slices come from
-    # our local build; not an issue on iOS where Google's prebuilt slices
-    # handle dedup via co-build).
-    # find "$build_dir/third_party/abseil-cpp" -name "libabsl_*.a" -type f 2>/dev/null
     find "$build_dir/third_party/re2" -name "libre2.a" -type f 2>/dev/null
-    find "$build_dir/third_party/zlib" -name "libz.a" -o -name "libzlibstatic.a" -type f 2>/dev/null
+    find "$build_dir/third_party/zlib" \( -name "libz.a" -o -name "libzlibstatic.a" \) -type f 2>/dev/null
     find "$build_dir" -name "libaddress_sorting.a" -type f 2>/dev/null
-  } | sort -u)
+  }
+
+  grpc_libs=()
+  while IFS= read -r f; do grpc_libs+=("$f"); done < <(collect_grpc_libs | sort -u)
 
   if [ "${#grpc_libs[@]}" -lt 5 ]; then
     echo "ERROR: too few grpc dependency archives found (${#grpc_libs[@]})"
