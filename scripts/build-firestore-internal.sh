@@ -77,7 +77,8 @@ xcodebuild -scheme firebase-firestore-xcframeworks \
   -configuration Release \
   -derivedDataPath "${DD}" \
   build > /tmp/phase4p2-xros-build.log 2>&1 \
-  || { echo "xros build failed — see /tmp/phase4p2-xros-build.log"; exit 1; }
+  || { echo "xros build failed — last 120 lines of /tmp/phase4p2-xros-build.log:"; \
+       tail -120 /tmp/phase4p2-xros-build.log; exit 1; }
 echo "  xros (device) build OK"
 
 xcodebuild -scheme firebase-firestore-xcframeworks \
@@ -85,7 +86,8 @@ xcodebuild -scheme firebase-firestore-xcframeworks \
   -configuration Release \
   -derivedDataPath "${DD}" \
   build > /tmp/phase4p2-xrsim-build.log 2>&1 \
-  || { echo "xrsimulator build failed — see /tmp/phase4p2-xrsim-build.log"; exit 1; }
+  || { echo "xrsimulator build failed — last 120 lines of /tmp/phase4p2-xrsim-build.log:"; \
+       tail -120 /tmp/phase4p2-xrsim-build.log; exit 1; }
 echo "  xrsimulator (sim) build OK"
 
 # Slice the .o files we just produced into a static lib per visionOS slice,

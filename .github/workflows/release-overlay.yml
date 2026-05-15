@@ -125,6 +125,15 @@ jobs:
         if: always()
         run: df -h /
 
+      - name: Collect build logs (always, even on failure)
+        if: always()
+        run: |
+          mkdir -p ci-logs
+          # Phase 4-part-2 logs from build-firestore-internal.sh
+          cp /tmp/phase4p2-*.log ci-logs/ 2>/dev/null || true
+          # xcodebuild result bundles, if any
+          find /tmp -maxdepth 3 -name "*.xcresult" -exec cp -R {} ci-logs/ \; 2>/dev/null || true
+
       - name: Upload build artifacts (always)
         if: always()
         uses: actions/upload-artifact@v4
@@ -134,7 +143,9 @@ jobs:
             build/release/${{ inputs.firebase_version }}/*.xcframework.zip
             build/release/${{ inputs.firebase_version }}/Package.swift
             upgrade.log
+            ci-logs/
           retention-days: 14
+          if-no-files-found: ignore
 
       - name: Stop here if dry run
         if: ${{ inputs.dry_run == true }}
