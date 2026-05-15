@@ -57,7 +57,15 @@ upstream docs say `import FirebaseFirestore`. The API surface is byte-identical
 to upstream — only the module name changed (necessary to avoid SPM
 target-name collisions when both packages are in the same resolved graph).
 
-Pin both packages to the same Firebase version. Bumps move them in lockstep.
+Both packages must reference the **same underlying Firebase version**. The
+overlay's tag scheme is `<firebase_version>.<patch>` — e.g. `11.15.6` means
+"Firebase 11.15.0, overlay patch 6". So `firebase-ios-sdk @ 11.15.0` pairs
+with `firebase-firestore-xcframeworks @ 11.15.<latest>`.
+
+If you need a Firebase version other than the ones listed in [Versioning](#versioning)
+below, see [Need a different Firebase version?](#need-a-different-firebase-version) —
+this repo doesn't auto-publish for every Firebase release, so a different
+version may need a one-time build by you or a request via an issue.
 
 After integration:
 
@@ -68,18 +76,41 @@ After integration:
 ## Versioning
 
 Release tags map to the underlying Firebase iOS SDK version, with patch-level
-suffixes for fixes to the overlay itself:
+suffixes for fixes to the overlay itself.
+
+### Published releases
 
 | Tag         | Firebase iOS SDK | Notes                                                                 |
 |-------------|------------------|-----------------------------------------------------------------------|
-| `11.15.6`   | 11.15.0          | **Current.** Use this. (See changelog below if you care.)             |
+| `11.15.6`   | 11.15.0          | **Current.** Use this if you're on Firebase 11.15.x.                  |
 | `11.15.5`   | 11.15.0          | absl ABI fix; Catalyst zip was broken — superseded by 11.15.6.        |
 | `11.15.4`   | 11.15.0          | grpc/absl link fixes; Catalyst zip was broken — superseded by 11.15.6.|
 | `11.15.0–3` | 11.15.0          | Early iterations of the overlay layout. Don't use.                    |
 
 Patch-level fixes within a Firebase version came from this overlay's own ABI /
-packaging work, not from upstream — the underlying Firestore C++ source is the
-same byte-identical Firebase 11.15.0.
+packaging work, not from upstream — the Firestore C++ source is byte-identical
+to upstream Firebase 11.15.0.
+
+### Need a different Firebase version?
+
+If you need a Firebase release that isn't published as a tag here, you have
+three options:
+
+1. **Open an issue** asking for a specific Firebase version — that's the
+   lowest-friction path, and it gives other users on the same version
+   somewhere to point.
+2. **Fork + run `./scripts/upgrade.sh <firebase_version>` yourself** (see
+   the next section). Takes ~30–90 min on a recent Apple Silicon Mac with
+   Xcode 26+ installed. The script handles source prep, builds, zips, and
+   prints the exact `gh release create` commands at the end.
+3. **Use it as a local-path SPM dep** — for development only. Clone this
+   repo, run `scripts/upgrade.sh`, then point your consumer `Package.swift`
+   at `path: "../path/to/firebase-firestore-xcframeworks"` instead of a
+   tagged URL.
+
+Note that there is no automated CI publishing new versions. Tags appear when
+the maintainer (or a contributor) runs the upgrade script and publishes a
+release. Firebase point releases are tracked manually.
 
 ## Upgrading to a new Firebase version
 
