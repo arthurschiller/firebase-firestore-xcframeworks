@@ -94,23 +94,28 @@ to upstream Firebase 11.15.0.
 ### Need a different Firebase version?
 
 If you need a Firebase release that isn't published as a tag here, you have
-three options:
+four options:
 
 1. **Open an issue** asking for a specific Firebase version — that's the
    lowest-friction path, and it gives other users on the same version
    somewhere to point.
-2. **Fork + run `./scripts/upgrade.sh <firebase_version>` yourself** (see
+2. **Fork + run the GitHub Actions workflow** — `gh workflow run
+   release-overlay.yml -f firebase_version=11.16.0 -f dry_run=false` on
+   your fork. Builds on a fresh `macos-15` runner (~50 min cold) and
+   produces a draft release with the six xcframework zips attached.
+   See [CLAUDE.md](CLAUDE.md) for details and dry-run testing.
+3. **Fork + run `./scripts/upgrade.sh <firebase_version>` locally** (see
    the next section). Takes ~30–90 min on a recent Apple Silicon Mac with
    Xcode 26+ installed. The script handles source prep, builds, zips, and
    prints the exact `gh release create` commands at the end.
-3. **Use it as a local-path SPM dep** — for development only. Clone this
+4. **Use it as a local-path SPM dep** — for development only. Clone this
    repo, run `scripts/upgrade.sh`, then point your consumer `Package.swift`
    at `path: "../path/to/firebase-firestore-xcframeworks"` instead of a
    tagged URL.
 
-Note that there is no automated CI publishing new versions. Tags appear when
-the maintainer (or a contributor) runs the upgrade script and publishes a
-release. Firebase point releases are tracked manually.
+Tags appear when the maintainer (or a contributor) triggers the upgrade
+workflow and publishes the resulting draft release. Firebase point
+releases are tracked manually — no auto-publish on upstream tag.
 
 ## Upgrading to a new Firebase version
 
@@ -167,9 +172,10 @@ machine — don't.
 - `build/artifacts/` is gitignored. A fresh clone can't `swift package
   resolve` without running the build scripts first OR consuming a published
   release (where `Package.swift` uses `.binaryTarget(url:..., checksum:...)`).
-- Release assets are produced from the maintainer's local machine, not a
-  reproducible CI run. A `workflow_dispatch` GitHub Actions wrapper around
-  `scripts/upgrade.sh` is feasible but not yet in the repo.
+- Release assets can be produced either from the maintainer's local
+  machine via `scripts/upgrade.sh` or from a fresh `macos-15` runner via
+  the `release-overlay.yml` GitHub Actions workflow. The workflow is the
+  recommended path — it's reproducible and doesn't tie up a local Mac.
 - visionOS simulator slices ship `arm64` only. Building consumers for
   `generic/platform=visionOS Simulator` (which requests `arm64 + x86_64`)
   will fail link on x86_64; use a specific simulator destination
