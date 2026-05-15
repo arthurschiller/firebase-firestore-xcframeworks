@@ -1,5 +1,59 @@
 # Build conventions for scripts/
 
+## Upgrading to a new Firebase version
+
+When Firebase ships a new release (e.g. `11.16.0`) and you want a matching
+visionOS overlay, run:
+
+```bash
+./scripts/upgrade.sh 11.16.0
+```
+
+`scripts/upgrade.sh` is the one-command entrypoint. It chains:
+
+1. `prepare-sources.sh <version>` — clones `firebase-ios-sdk` + deps
+   (`abseil-cpp`, `grpc`, `leveldb`) at the right tags, downloads + extracts
+   Google's `Firebase.zip`, rsyncs the vendored `Firestore/`, `FirebaseCore/`,
+   `CoreOnly/`, `FirebaseFirestoreInternal/` trees from upstream, and
+   re-applies our two source patches via `apply-patches.sh`.
+2. `build-absl.sh`, `build-openssl_grpc.sh`, `build-grpc.sh`,
+   `normalize-openssl-grpc-modulemap.sh`, `build-leveldb.sh`,
+   `build-firestore-internal.sh` — produce visionOS slices and merge with
+   Google's untouched iOS/macOS/Catalyst/tvOS slices.
+3. `build-release.sh <version>` — `zip -y` each xcframework, compute
+   checksums, generate a URL-mode `Package.swift` pointing at the
+   to-be-uploaded release assets.
+
+`upgrade.sh` does NOT auto-commit, tag, or push. It prints the exact
+`git` and `gh release create` commands at the end for you to review and
+run by hand.
+
+### Notes on the source-version detection
+
+`prepare-sources.sh` reads each xcframework's `CFBundleShortVersionString`
+out of the extracted `Firebase.zip` and uses it to check out the matching
+source tag (`abseil-cpp/20240722.0`, `grpc/v1.69.0`, etc.). Firebase
+occasionally bumps a binary's bundle version without creating a matching
+source tag (we saw this with leveldb `1.22.6` → no tag, falls back to
+`1.22.5`). When that happens `prepare-sources.sh` prints a `WARN` and
+keeps the previously checked-out source — usually fine, but verify the
+build output matches Google's binary slice if you suspect drift.
+
+### Patches re-applied on every upgrade
+
+- `abseil-cpp/absl/base/options.h` — force `ABSL_OPTION_USE_STD_*=0` to
+  match gRPC's bundled-absl ABI (applied to both the standalone tree
+  and `grpc/third_party/abseil-cpp/`). Without this, our visionOS link
+  fails with mismatched mangled names for any absl API that takes a
+  `string_view`.
+- `Firestore/Swift/Source/**/*.swift` — rewrite `import
+  FirebaseFirestoreInternalWrapper` → `_FirebaseFirestoreInternalWrapper`
+  and `FirebaseFirestore.<Type>` → `FirebaseFirestorePrebuilt.<Type>`.
+  These compensate for the SPM-target renames we needed to avoid
+  collisions with upstream `firebase-ios-sdk`'s same-named targets in
+  the consumer dep graph.
+
+
 ## Parallelism — never use bare `-j`
 
 `make -j` / `cmake --build ... -j` without a number means **unlimited
