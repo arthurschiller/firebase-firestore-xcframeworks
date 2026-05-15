@@ -3,13 +3,51 @@
 ## Upgrading to a new Firebase version
 
 When Firebase ships a new release (e.g. `11.16.0`) and you want a matching
-visionOS overlay, run:
+visionOS overlay, there are two equivalent paths:
+
+### A. Remote build via GitHub Actions (preferred when you don't want to
+tie up your Mac)
+
+```bash
+gh workflow run release-overlay.yml \
+  -f firebase_version=11.16.0 \
+  -f dry_run=false
+```
+
+This runs `scripts/upgrade.sh` on a fresh `macos-15` runner, commits the
+generated `Package.swift` to `main`, tags the version, and creates a
+**draft** GitHub Release with all six xcframework zips attached. Drafts
+are invisible publicly — click "Publish release" in the GitHub UI after
+reviewing the diff and assets.
+
+Always test workflow changes first with `dry_run=true`:
+
+```bash
+gh workflow run release-overlay.yml \
+  -f firebase_version=11.15.0 \
+  -f dry_run=true
+```
+
+A dry run builds + uploads a workflow artifact only; no commit, tag, or
+release is created. Existing tags / releases / main are guaranteed untouched.
+
+Workflow definition lives at `.github/workflows/release-overlay.yml`.
+Runner is `macos-15` (~7 GB RAM, so we set `PARALLEL_JOBS=2` for gRPC's
+heavier translation units). Cold-cache full build is ~50 min; ccache is
+restored between runs.
+
+### B. Local build
 
 ```bash
 ./scripts/upgrade.sh 11.16.0
 ```
 
-`scripts/upgrade.sh` is the one-command entrypoint. It chains:
+Same orchestration on your Mac. Faster with warm local ccache, but ties
+up your machine for the duration (~30–60 min). Does NOT auto-commit,
+tag, or push — it prints the exact `git` and `gh release create`
+commands at the end for you to review and run by hand.
+
+### What both flows do
 
 1. `prepare-sources.sh <version>` — clones `firebase-ios-sdk` + deps
    (`abseil-cpp`, `grpc`, `leveldb`) at the right tags, downloads + extracts
@@ -23,10 +61,6 @@ visionOS overlay, run:
 3. `build-release.sh <version>` — `zip -y` each xcframework, compute
    checksums, generate a URL-mode `Package.swift` pointing at the
    to-be-uploaded release assets.
-
-`upgrade.sh` does NOT auto-commit, tag, or push. It prints the exact
-`git` and `gh release create` commands at the end for you to review and
-run by hand.
 
 ### Notes on the source-version detection
 
