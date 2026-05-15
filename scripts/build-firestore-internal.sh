@@ -72,7 +72,7 @@ if [[ -z "${VOS_SIM_ID}" ]]; then
   exit 1
 fi
 
-xcodebuild -scheme firebase-firestore-xcframeworks \
+xcodebuild -scheme FirebaseFirestoreInternalWrapper \
   -destination 'generic/platform=visionOS' \
   -configuration Release \
   -derivedDataPath "${DD}" \
@@ -81,7 +81,7 @@ xcodebuild -scheme firebase-firestore-xcframeworks \
        tail -120 /tmp/phase4p2-xros-build.log; exit 1; }
 echo "  xros (device) build OK"
 
-xcodebuild -scheme firebase-firestore-xcframeworks \
+xcodebuild -scheme FirebaseFirestoreInternalWrapper \
   -destination "platform=visionOS Simulator,id=${VOS_SIM_ID}" \
   -configuration Release \
   -derivedDataPath "${DD}" \
