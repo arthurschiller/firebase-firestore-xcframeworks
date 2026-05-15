@@ -102,6 +102,43 @@ jobs:
           brew update --auto-update-secs 86400 >/dev/null 2>&1 || true
           brew install ccache cmake ninja || true
 
+      - name: Ensure visionOS simulator is available
+        run: |
+          # build-firestore-internal.sh needs an Apple Vision Pro simulator to
+          # exist (it picks a UDID for the xrsimulator-targeted xcodebuild).
+          # macos runners ship some simulators by default but not always visionOS.
+          if xcrun simctl list devices available 2>/dev/null \
+               | grep -q "Apple Vision Pro"; then
+            echo "Apple Vision Pro simulator already available."
+          else
+            echo "Installing visionOS simulator runtime..."
+            # Find the visionOS platform identifier and download it.
+            sudo xcodebuild -downloadPlatform visionOS || \
+              echo "::warning::xcodebuild -downloadPlatform failed; will try a different approach"
+            # Create a simulator device if the runtime is now present.
+            runtime_id="$(xcrun simctl list runtimes -j | python3 -c '
+            import json,sys
+            d = json.load(sys.stdin)
+            for rt in d["runtimes"]:
+                if rt["isAvailable"] and ("xrOS" in rt["identifier"] or "visionOS" in rt["identifier"]):
+                    print(rt["identifier"]); break
+            ')"
+            if [ -n "$runtime_id" ]; then
+              device_type="$(xcrun simctl list devicetypes -j | python3 -c '
+              import json,sys
+              d = json.load(sys.stdin)
+              for dt in d["devicetypes"]:
+                  if "Apple Vision Pro" in dt["name"]:
+                      print(dt["identifier"]); break
+              ')"
+              if [ -n "$device_type" ]; then
+                xcrun simctl create "Apple Vision Pro" "$device_type" "$runtime_id" || true
+              fi
+            fi
+          fi
+          echo "Final visionOS simulator inventory:"
+          xcrun simctl list devices available | grep -E "(visionOS|xrOS|Apple Vision Pro)" || true
+
       - name: Restore ccache
         uses: actions/cache@v4
         with:
