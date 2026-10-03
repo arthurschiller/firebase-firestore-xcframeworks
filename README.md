@@ -69,7 +69,10 @@ version may need a one-time build by you or a request via an issue.
 
 After integration:
 
-- iOS / macOS / Catalyst / tvOS builds use Google's untouched binaries.
+- iOS / macOS / Catalyst / tvOS builds link Google's exact Firestore binary
+  slices (ABI-identical to the official release) — you still
+  `import FirebaseFirestorePrebuilt`; only the visionOS slices are built by
+  this overlay.
 - visionOS builds use our binary slices — no source compile, no env-var dance,
   no `Package.resolved` swap script, no Xcode Cloud workaround.
 
