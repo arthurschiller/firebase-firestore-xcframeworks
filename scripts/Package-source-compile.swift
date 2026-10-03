@@ -130,6 +130,12 @@ let package = Package(
                 .headerSearchPath("../"),
                 .headerSearchPath("Source/Public/FirebaseFirestore"),
                 .headerSearchPath("Protos/nanopb"),
+                // re2 is header-only in the vendored tree; the compiled re2
+                // symbols are bundled in the grpc xcframework. Matches upstream
+                // firebase-ios-sdk's Firestore target. Required from Firebase
+                // 12.19.x onward — core/src/core/expressions_eval.cc does
+                // #include "re2/re2.h".
+                .headerSearchPath("third_party/re2"),
                 .define("PB_FIELD_32BIT", to: "1"),
                 .define("PB_NO_PACKED_STRUCTS", to: "1"),
                 .define("PB_ENABLE_MALLOC", to: "1"),
