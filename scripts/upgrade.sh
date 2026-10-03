@@ -66,7 +66,7 @@ step "7/8  Build FirebaseFirestoreInternal.xcframework"
 bash scripts/build-firestore-internal.sh
 
 step "8/8  Package release (zip + checksums + URL-mode Package.swift)"
-bash scripts/build-release.sh "$FIREBASE_VERSION" "$REPO"
+bash scripts/build-release.sh "$FIREBASE_VERSION" "$REPO" "$FIREBASE_VERSION"
 
 OUT="$REPO_ROOT/build/release/$FIREBASE_VERSION"
 
