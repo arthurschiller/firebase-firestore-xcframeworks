@@ -97,9 +97,24 @@ build_slice() {
   local config="$1"      # Release-xros | Release-xrsimulator
   local slice_name="$2"  # xros-arm64 | xros-arm64-simulator
 
-  local obj_dir="${DD}/Build/Intermediates.noindex/firebase-firestore-xcframeworks.build/${config}/FirebaseFirestoreInternalWrapper.build/Objects-normal/arm64"
-  if [[ ! -d "${obj_dir}" ]]; then
-    echo "Missing object dir: ${obj_dir}"
+  # Xcode's SwiftPM integration names the per-target build dir after the target.
+  # Xcode 26+ appends a "-t" suffix (FirebaseFirestoreInternalWrapper-t.build) to
+  # disambiguate the target from the same-named product/library; older Xcode used
+  # the plain name. Prefer the "-t" form, fall back to the plain name.
+  local tgt_root="${DD}/Build/Intermediates.noindex/firebase-firestore-xcframeworks.build/${config}"
+  local obj_dir=""
+  local candidate
+  for candidate in \
+    "${tgt_root}/FirebaseFirestoreInternalWrapper-t.build/Objects-normal/arm64" \
+    "${tgt_root}/FirebaseFirestoreInternalWrapper.build/Objects-normal/arm64"; do
+    if [[ -d "${candidate}" ]]; then
+      obj_dir="${candidate}"
+      break
+    fi
+  done
+  if [[ -z "${obj_dir}" ]]; then
+    echo "Missing object dir under ${tgt_root}"
+    echo "(looked for FirebaseFirestoreInternalWrapper-t.build and FirebaseFirestoreInternalWrapper.build)"
     exit 1
   fi
 
