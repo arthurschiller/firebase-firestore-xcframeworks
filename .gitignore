@@ -2,6 +2,8 @@
 build/
 .build/
 *.xcframework.zip
+upgrade.log
+ci-logs/
 
 # Downloaded upstream artifacts
 Firebase.zip
