@@ -61,6 +61,11 @@ commands at the end for you to review and run by hand.
 3. `build-release.sh <version>` — `zip -y` each xcframework, compute
    checksums, generate a URL-mode `Package.swift` pointing at the
    to-be-uploaded release assets.
+4. `verify-release.sh <version>` — unzip the release zips and fail the
+   run unless every `FirebaseFirestoreInternal` slice embeds the exact
+   root certificate bundle from the vendored
+   `grpc_root_certificates_generated.cc`, and every non-visionOS slice
+   is byte-identical to Google's `Firebase.zip`.
 
 ### Notes on the source-version detection
 
