@@ -219,4 +219,4 @@ jobs:
             build/release/${{ inputs.firebase_version }}/*.xcframework.zip \
             --draft \
             --title "${{ steps.tag.outputs.tag }}" \
-            --notes "Auto-built by workflow run #${{ github.run_id }} on $(date -u +%Y-%m-%dT%H:%M:%SZ). Review the assets and Package.swift diff, then click **Publish release** to go live."
+            --notes "Cloud Firestore for visionOS, matching Firebase ${{ inputs.firebase_version }}."

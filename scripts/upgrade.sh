@@ -18,6 +18,8 @@
 #   6. build-leveldb.sh
 #   7. build-firestore-internal.sh
 #   8. build-release.sh    — zip, checksum, generate URL-mode Package.swift.
+#   9. verify-release.sh   — check the zips' root certificates and that
+#                            non-visionOS slices are Google's exact bytes.
 #
 # After it finishes successfully, the script prints the exact git + gh
 # commands to review, tag, push, and create the GitHub release. It does
@@ -44,29 +46,32 @@ step() {
   echo "###############################################################"
 }
 
-step "1/8  Prepare sources (clone, sync, patch)"
+step "1/9  Prepare sources (clone, sync, patch)"
 bash scripts/prepare-sources.sh "$FIREBASE_VERSION"
 
-step "2/8  Build absl.xcframework"
+step "2/9  Build absl.xcframework"
 bash scripts/build-absl.sh
 
-step "3/8  Build openssl_grpc.xcframework"
+step "3/9  Build openssl_grpc.xcframework"
 bash scripts/build-openssl_grpc.sh
 
-step "4/8  Build grpc + grpcpp xcframeworks"
+step "4/9  Build grpc + grpcpp xcframeworks"
 bash scripts/build-grpc.sh
 
-step "5/8  Normalize openssl_grpc modulemap (rename BoringSSL-GRPC → openssl_grpc)"
+step "5/9  Normalize openssl_grpc modulemap (rename BoringSSL-GRPC → openssl_grpc)"
 bash scripts/normalize-openssl-grpc-modulemap.sh
 
-step "6/8  Build leveldb.xcframework"
+step "6/9  Build leveldb.xcframework"
 bash scripts/build-leveldb.sh
 
-step "7/8  Build FirebaseFirestoreInternal.xcframework"
+step "7/9  Build FirebaseFirestoreInternal.xcframework"
 bash scripts/build-firestore-internal.sh
 
-step "8/8  Package release (zip + checksums + URL-mode Package.swift)"
+step "8/9  Package release (zip + checksums + URL-mode Package.swift)"
 bash scripts/build-release.sh "$FIREBASE_VERSION" "$REPO" "$FIREBASE_VERSION"
+
+step "9/9  Verify release (root certificates + Google's slices unchanged)"
+bash scripts/verify-release.sh "$FIREBASE_VERSION"
 
 OUT="$REPO_ROOT/build/release/$FIREBASE_VERSION"
 
