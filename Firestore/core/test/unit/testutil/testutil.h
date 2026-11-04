@@ -263,6 +263,13 @@ nanopb::Message<google_firestore_v1_ArrayValue> Array(Args&&... values) {
   return details::MakeArray(std::move(values)...);
 }
 
+nanopb::Message<google_firestore_v1_ArrayValue> ArrayFromVector(
+    const std::vector<google_firestore_v1_Value>& values);
+
+nanopb::Message<google_firestore_v1_Value> MapFromPairs(
+    const std::vector<std::pair<std::string, google_firestore_v1_Value>>&
+        pairs);
+
 /** Wraps an immutable sorted map into an ObjectValue. */
 model::ObjectValue WrapObject(nanopb::Message<google_firestore_v1_Value> value);
 
@@ -457,6 +464,22 @@ std::pair<std::string, model::TransformOperation> ServerTimestamp(
  * above.
  */
 std::pair<std::string, model::TransformOperation> Increment(
+    std::string field, nanopb::Message<google_firestore_v1_Value> operand);
+
+/**
+ * Creates a pair of field name, TransformOperation that represents a numeric
+ * minimum on the given field, suitable for passing to TransformMutation,
+ * above.
+ */
+std::pair<std::string, model::TransformOperation> Minimum(
+    std::string field, nanopb::Message<google_firestore_v1_Value> operand);
+
+/**
+ * Creates a pair of field name, TransformOperation that represents a numeric
+ * maximum on the given field, suitable for passing to TransformMutation,
+ * above.
+ */
+std::pair<std::string, model::TransformOperation> Maximum(
     std::string field, nanopb::Message<google_firestore_v1_Value> operand);
 
 /**

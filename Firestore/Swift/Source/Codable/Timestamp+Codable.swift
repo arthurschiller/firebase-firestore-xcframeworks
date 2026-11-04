@@ -60,3 +60,4 @@ extension CodableTimestamp {
 
 /** Extends Timestamp to conform to Codable. */
 extension FirebaseCore.Timestamp: FirebaseFirestorePrebuilt.CodableTimestamp {}
+extension FirebaseCore.Timestamp: @retroactive Codable {}

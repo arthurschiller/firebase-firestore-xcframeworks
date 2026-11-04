@@ -9,7 +9,7 @@
 
 import PackageDescription
 
-let firebaseVersion = "11.15.0"
+let firebaseVersion = "12.19.3"
 
 let package = Package(
     name: "firebase-firestore-xcframeworks",

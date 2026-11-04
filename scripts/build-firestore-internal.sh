@@ -194,7 +194,7 @@ EOF
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>FirebaseFirestoreInternal</string>
     <key>CFBundlePackageType</key><string>FMWK</string>
-    <key>CFBundleShortVersionString</key><string>11.15.0</string>
+    <key>CFBundleShortVersionString</key><string>12.19.3</string>
     <key>CFBundleSignature</key><string>????</string>
     <key>CFBundleSupportedPlatforms</key><array><string>${supported_plats}</string></array>
     <key>CFBundleVersion</key><string>1</string>

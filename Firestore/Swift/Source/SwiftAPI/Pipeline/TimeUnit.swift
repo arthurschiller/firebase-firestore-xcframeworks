@@ -12,34 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Foundation
-
-final class AtomicBox<T> {
-  private var _value: T
-  private let lock = NSLock()
-
-  public init(_ value: T) {
-    _value = value
+public struct TimeUnit: Sendable, Equatable, Hashable {
+  enum Kind: String {
+    case microsecond
+    case millisecond
+    case second
+    case minute
+    case hour
+    case day
   }
 
-  public func value() -> T {
-    lock.withLock {
-      _value
-    }
-  }
+  public static let microsecond = TimeUnit(kind: .microsecond)
+  public static let millisecond = TimeUnit(kind: .millisecond)
+  public static let second = TimeUnit(kind: .second)
+  public static let minute = TimeUnit(kind: .minute)
+  public static let hour = TimeUnit(kind: .hour)
+  public static let day = TimeUnit(kind: .day)
 
-  @discardableResult
-  public func withLock(_ mutatingBody: (_ value: inout T) -> Void) -> T {
-    lock.withLock {
-      mutatingBody(&_value)
-      return _value
-    }
-  }
+  public let rawValue: String
 
-  @discardableResult
-  public func withLock<R>(_ mutatingBody: (_ value: inout T) throws -> R) rethrows -> R {
-    try lock.withLock {
-      try mutatingBody(&_value)
-    }
+  init(kind: Kind) {
+    rawValue = kind.rawValue
   }
 }

@@ -50,7 +50,7 @@
 
 import PackageDescription
 
-let firebaseVersion = "11.15.0"
+let firebaseVersion = "12.19.3"
 
 let package = Package(
     name: "firebase-firestore-xcframeworks",
@@ -72,41 +72,30 @@ let package = Package(
         .library(name: "FirebaseFirestorePrebuilt", targets: ["FirebaseFirestorePrebuilt"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", exact: "11.15.0"),
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", exact: "12.19.3"),
         .package(url: "https://github.com/firebase/nanopb.git", "2.30910.0" ..< "2.30911.0"),
     ],
     targets: [
         // MARK: - Local binaryTargets
 
         .binaryTarget(name: "firestore_absl",
-                      // 11.15.6 build: visionOS slices with ABSL_OPTION_USE_STD_*
-                      // forced to 0 (distinct-class ABI matching gRPC's bundled
-                      // absl), AND re-zipped with `zip -y` to preserve macOS-style
-                      // framework symlinks. Earlier 11.15.5 zip dereferenced
-                      // Versions/Current symlinks, breaking Catalyst codesign.
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/absl.xcframework.zip",
-                      checksum: "f3b2a3bb92c1d1f155184088123184d164d239493bb9d4bfb373051ece59f4f7"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/absl.xcframework.zip",
+                      checksum: "52b3d8572984858b39c6c83b71f1b8448e094fd893d85e18984cc796adc06a0c"),
         .binaryTarget(name: "firestore_openssl_grpc",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/openssl_grpc.xcframework.zip",
-                      checksum: "b0a0b744a3699bf741b7ada2a2892e1d8f3d0d4b40bf509685ee0916060236b2"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/openssl_grpc.xcframework.zip",
+                      checksum: "6fc85632a5db58ad57a46234730f78200c5cdea17da4be5a0cdce55d8183fe7c"),
         .binaryTarget(name: "firestore_grpc",
-                      // 11.15.6 build: visionOS slices without bundled libabsl_*.a
-                      // (absl symbols come from firestore_absl), AND re-zipped
-                      // with `zip -y` to preserve framework symlinks for Catalyst.
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/grpc.xcframework.zip",
-                      checksum: "4aafe55b44a5ad7be798f4bdd46f970413e198321e7b283aab2c94cc0a9e59f5"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/grpc.xcframework.zip",
+                      checksum: "83b73fdd217433f38b01ab2849b5a290c20c783d6d3891eb8be097c282131e73"),
         .binaryTarget(name: "firestore_grpcpp",
-                      // 11.15.6 build: re-zipped with `zip -y` to preserve
-                      // framework symlinks (the 11.15.0 zip dereferenced them,
-                      // breaking Catalyst codesign).
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.6/grpcpp.xcframework.zip",
-                      checksum: "9a86a314b22c45d07f3fd29905a5c5376f3d6bfa3f56a12262332fdc05519171"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/grpcpp.xcframework.zip",
+                      checksum: "3b7ea25197bdca7af17cda5058efaf469fcfd0a483683015c4d1610964766c6c"),
         .binaryTarget(name: "firestore_leveldb",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/leveldb.xcframework.zip",
-                      checksum: "72c900231e7880febd6172f9ecea89eff5893a7b19c02bab256e1162f6015014"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/leveldb.xcframework.zip",
+                      checksum: "601fdd27b046f1af89c2e111b4d1ce0010f926c205b4313615eaf9c8c8ffc78e"),
         .binaryTarget(name: "_FirebaseFirestoreInternal",
-                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/11.15.0/FirebaseFirestoreInternal.xcframework.zip",
-                      checksum: "4ac88cf4607aff62e75f62833d70cc6415f47bb7e063e737946c25e7d9ce9a2c"),
+                      url: "https://github.com/arthurschiller/firebase-firestore-xcframeworks/releases/download/12.19.3/FirebaseFirestoreInternal.xcframework.zip",
+                      checksum: "60cfef37a45b87a2b0672d4dbbb609f0c5383efc77af6c7ff6b00e0197cdaf89"),
 
         // MARK: - Firestore Obj-C wrapper around the binary
 

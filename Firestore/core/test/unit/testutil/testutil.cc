@@ -17,8 +17,11 @@
 #include "Firestore/core/test/unit/testutil/testutil.h"
 
 #include <algorithm>
+#include <cstdint>
+
 #include <chrono>
 #include <set>
+#include "absl/base/attributes.h"
 
 #include "Firestore/core/include/firebase/firestore/geo_point.h"
 #include "Firestore/core/include/firebase/firestore/timestamp.h"
@@ -93,7 +96,7 @@ constexpr const char* kDeleteSentinel = "<DELETE>";
 // the JDK (which is defined to normalize all NaNs to this value). This also
 // happens to be a common value for NAN in C++, but C++ does not require this
 // specific NaN value to be used, so we normalize.
-const uint64_t kCanonicalNanBits = 0x7ff8000000000000ULL;
+ABSL_CONST_INIT const uint64_t kCanonicalNanBits = 0x7ff8000000000000ULL;
 
 namespace details {
 
@@ -187,6 +190,34 @@ Message<google_firestore_v1_Value> Value(const model::ObjectValue& value) {
 
 ObjectValue WrapObject(Message<google_firestore_v1_Value> value) {
   return ObjectValue{std::move(value)};
+}
+
+nanopb::Message<google_firestore_v1_ArrayValue> ArrayFromVector(
+    const std::vector<google_firestore_v1_Value>& values) {
+  nanopb::Message<google_firestore_v1_ArrayValue> array_value;
+  array_value->values_count = nanopb::CheckedSize(values.size());
+  array_value->values =
+      nanopb::MakeArray<google_firestore_v1_Value>(array_value->values_count);
+  for (size_t i = 0; i < values.size(); ++i) {
+    array_value->values[i] = *model::DeepClone(values[i]).release();
+  }
+  return array_value;
+}
+
+nanopb::Message<google_firestore_v1_Value> MapFromPairs(
+    const std::vector<std::pair<std::string, google_firestore_v1_Value>>&
+        pairs) {
+  google_firestore_v1_Value value;
+  value.which_value_type = google_firestore_v1_Value_map_value_tag;
+  nanopb::SetRepeatedField(
+      &value.map_value.fields, &value.map_value.fields_count, pairs,
+      [](std::pair<std::string, google_firestore_v1_Value> entry) {
+        return google_firestore_v1_MapValue_FieldsEntry{
+            nanopb::MakeBytesArray(entry.first),
+            *model::DeepClone(entry.second).release()};
+      });
+
+  return nanopb::MakeMessage(value);
 }
 
 model::DocumentKey Key(absl::string_view path) {
@@ -544,6 +575,22 @@ std::pair<std::string, TransformOperation> ServerTimestamp(std::string field) {
 std::pair<std::string, TransformOperation> Increment(
     std::string field, Message<google_firestore_v1_Value> operand) {
   model::NumericIncrementTransform transform(std::move(operand));
+
+  return std::pair<std::string, TransformOperation>(std::move(field),
+                                                    std::move(transform));
+}
+
+std::pair<std::string, TransformOperation> Minimum(
+    std::string field, Message<google_firestore_v1_Value> operand) {
+  model::NumericMinimumTransform transform(std::move(operand));
+
+  return std::pair<std::string, TransformOperation>(std::move(field),
+                                                    std::move(transform));
+}
+
+std::pair<std::string, TransformOperation> Maximum(
+    std::string field, Message<google_firestore_v1_Value> operand) {
+  model::NumericMaximumTransform transform(std::move(operand));
 
   return std::pair<std::string, TransformOperation>(std::move(field),
                                                     std::move(transform));
