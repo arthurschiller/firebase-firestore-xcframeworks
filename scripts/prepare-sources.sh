@@ -229,5 +229,16 @@ sed -i.bak "s|<key>CFBundleShortVersionString</key><string>[^<]*</string>|<key>C
   "$REPO_ROOT/scripts/build-firestore-internal.sh"
 rm -f "$REPO_ROOT/scripts/build-firestore-internal.sh.bak"
 
+# README integration example: bump ONLY the two `exact:` version pins (the
+# firebase-ios-sdk dependency and this overlay). Everything else in the
+# README — the versioning table, its notes, and all prose — stays
+# hand-authored. Each sed is scoped to its own `.git` line so the two pins
+# can't be confused, and the repo owner in the overlay URL is left untouched.
+sed -i.bak \
+  -e "/firebase-ios-sdk\.git/ s/exact: \"[^\"]*\"/exact: \"$FIREBASE_VERSION\"/" \
+  -e "/firebase-firestore-xcframeworks\.git/ s/exact: \"[^\"]*\"/exact: \"$FIREBASE_VERSION\"/" \
+  "$REPO_ROOT/README.md"
+rm -f "$REPO_ROOT/README.md.bak"
+
 echo ""
 echo "==> Sources prepared for Firebase $FIREBASE_VERSION."
